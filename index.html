@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live QR scanner</title>
+  <script type="module" crossorigin src="./assets/index-DUsS1xr-.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-BIWKHdt1.css">
+</head>
+<body>
+  <main>
+    <h1>Live QR scanner</h1>
+    <p>Point the camera at the ticket QR. This page only reads the code. It does not check anyone in. Copy the code into the private gate page, choose Check in or Check out, then tap Confirm.</p>
+    <div class="actions">
+      <button id="rear" class="primary" type="button">Rear camera</button>
+      <button id="front" type="button">Front camera</button>
+      <button id="stop" type="button" hidden>Stop</button>
+    </div>
+    <p id="status" role="status">The camera is off.</p>
+    <video id="view" playsinline muted autoplay hidden></video>
+    <div id="code-wrap" hidden>
+      <label for="code">Ticket code</label>
+      <input id="code" readonly>
+      <div class="actions">
+        <button id="copy" class="primary" type="button">Copy code</button>
+        <button id="again" type="button">Scan another</button>
+      </div>
+    </div>
+    <p class="tiny">The camera works only when this page is the top-level site on HTTPS. It does not work inside the registration app. A physical phone is still required before this can be called verified.</p>
+  </main>
+</body>
+</html>

@@ -1,3 +1,3 @@
 # Gate scanner
 
-This repository is only the live QR scanner page. It keeps no tickets, no staff logins, and no registration records. Scanning does not check anyone in.
+This repository is only the gate scanner page. It stores no tickets and no passwords. Gate staff sign in, scan one ticket, and confirm check-in or check-out. The records stay in the private spreadsheet.

@@ -3,30 +3,56 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Live QR scanner</title>
-  <script type="module" crossorigin src="./assets/index-DUsS1xr-.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-BIWKHdt1.css">
+  <title>Gate scanner</title>
+  <script type="module" crossorigin src="./assets/index-B7uL17el.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CMlWJZOg.css">
 </head>
 <body>
   <main>
-    <h1>Live QR scanner</h1>
-    <p>Point the camera at the ticket QR. This page only reads the code. It does not check anyone in. Copy the code into the private gate page, choose Check in or Check out, then tap Confirm.</p>
-    <div class="actions">
-      <button id="rear" class="primary" type="button">Rear camera</button>
-      <button id="front" type="button">Front camera</button>
-      <button id="stop" type="button" hidden>Stop</button>
-    </div>
-    <p id="status" role="status">The camera is off.</p>
-    <video id="view" playsinline muted autoplay hidden></video>
-    <div id="code-wrap" hidden>
-      <label for="code">Ticket code</label>
-      <input id="code" readonly>
-      <div class="actions">
-        <button id="copy" class="primary" type="button">Copy code</button>
-        <button id="again" type="button">Scan another</button>
+    <section id="setup">
+      <h1>Connect the gate</h1>
+      <p>Paste the new gate web app address. This is not a ticket and it does not check anyone in.</p>
+      <label for="endpoint">Gate web app address</label>
+      <input id="endpoint" type="url" autocomplete="off" inputmode="url" placeholder="https://script.google.com/macros/s/…/exec">
+      <button id="save-endpoint" class="primary" type="button">Save address</button>
+      <p id="setup-status" role="status"></p>
+    </section>
+    <section id="signin" hidden>
+      <h1>Gate sign-in</h1>
+      <p>Sign in once on this phone. Only the gate and admin passwords work.</p>
+      <label for="user">Username</label>
+      <input id="user" autocomplete="username">
+      <label for="secret">Password</label>
+      <input id="secret" type="password" autocomplete="current-password">
+      <button id="signin-btn" class="primary" type="button">Sign in</button>
+      <p id="signin-status" role="status"></p>
+    </section>
+    <section id="desk" hidden>
+      <div class="top">
+        <h1>Gate</h1>
+        <p id="count">Inside now: 0</p>
       </div>
-    </div>
-    <p class="tiny">The camera works only when this page is the top-level site on HTTPS. It does not work inside the registration app. A physical phone is still required before this can be called verified.</p>
+      <div class="actions">
+        <button id="rear" class="primary" type="button">Rear camera</button>
+        <button id="front" type="button">Front camera</button>
+        <button id="stop" type="button" hidden>Stop</button>
+        <button id="signout" type="button">Sign out</button>
+      </div>
+      <p id="status" role="status">The camera is off.</p>
+      <video id="view" playsinline muted autoplay hidden></video>
+      <section id="review" hidden>
+        <p id="who" class="name"></p>
+        <p id="meta"></p>
+        <p id="state" class="state"></p>
+        <div class="actions">
+          <button id="in" class="primary" type="button" aria-pressed="true">Check in</button>
+          <button id="out" type="button" aria-pressed="false">Check out</button>
+        </div>
+        <button id="confirm" class="primary big" type="button">Confirm</button>
+        <button id="skip" type="button">Scan next</button>
+      </section>
+    </section>
+    <p class="tiny">Check-in happens only after Confirm. A lost phone is signed out by revoking gate sessions in the script editor. The camera still has to be tried on a phone after this build is published.</p>
   </main>
 </body>
 </html>

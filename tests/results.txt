@@ -1,0 +1,14 @@
+PASS  queryLongEnough: 3 letters or a ticket number, accents count
+PASS  publicHit keeps only safe fields
+PASS  GateWeb: gate role can search and act_by_ticket; treasurer cannot sign in
+PASS  desk search: signed-out session is refused without leaking tickets
+PASS  desk search: too short does not call the server
+PASS  desk search: paid tickets only, guest label, max 10, no emails or tokens in hits
+PASS  desk: Check in waits for Confirm; already inside is clear; idempotent requestId
+PASS  desk: confirm check-in of a paid ticket logs name_search and cancel does nothing
+PASS  desk: QR check-in path is unchanged and does not use act_by_ticket
+PASS  desk: unpaid and demo tickets cannot be acted on by ticket id
+10 passed, 0 failed
+---
+Playwright harness: PASS (search, confirm, already inside). See tests/scanner-ui.harness.mjs
+V30 existing tests: 13 files, 156 passed, 0 failed (re-run Nov 12 2026, no GateWeb/Server changes).

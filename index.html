@@ -4,8 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Gate scanner</title>
-  <script type="module" crossorigin src="./assets/index-B7uL17el.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-CMlWJZOg.css">
+  <link rel="stylesheet" href="./assets/scanner.css">
 </head>
 <body>
   <main>
@@ -51,8 +50,26 @@
         <button id="confirm" class="primary big" type="button">Confirm</button>
         <button id="skip" type="button">Scan next</button>
       </section>
+      <section id="find">
+        <h2>Find by name or ticket number</h2>
+        <p>If the QR will not scan, type at least 3 letters of the surname, or the ticket number (it starts with tix_). Only paid tickets are listed.</p>
+        <label for="query">Surname or ticket number</label>
+        <input id="query" autocomplete="off" enterkeyhint="search" autocapitalize="off" spellcheck="false">
+        <button id="search-btn" class="primary big" type="button">Search</button>
+        <p id="find-status" role="status"></p>
+        <section id="find-confirm" hidden>
+          <p id="find-confirm-text" class="name"></p>
+          <button id="find-confirm-btn" class="primary big" type="button">Confirm</button>
+          <button id="find-cancel" type="button">Cancel</button>
+        </section>
+        <div id="hits"></div>
+        <p id="find-more" hidden>More matches exist. Type more letters to narrow the list.</p>
+      </section>
     </section>
-    <p class="tiny">Check-in happens only after Confirm. A lost phone is signed out by revoking gate sessions in the script editor.</p>
+    <p class="tiny">Check-in happens only after Confirm. You can also search by surname or ticket number. A lost phone is signed out by revoking gate sessions in the script editor.</p>
   </main>
+  <script src="./assets/jsqr.js"></script>
+  <script src="./assets/gate-desk.js"></script>
+  <script src="./assets/app.js"></script>
 </body>
 </html>

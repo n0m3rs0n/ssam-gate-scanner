@@ -265,7 +265,7 @@ await check('desk: QR check-in path is unchanged and does not use act_by_ticket'
   assert.equal(posts[1].ticket, 'TokSecretA12345');
 });
 
-await check('desk: rescan of an already-inside QR shows Already inside and auto-resumes', async () => {
+await check('desk: rescan of an already-inside QR shows Already inside and stays until Scan next', async () => {
   const { service, secret } = makeService();
   const posts = [];
   const { desk, scheduled, resumes, flush } = makeDesk(service, posts);
@@ -289,11 +289,11 @@ await check('desk: rescan of an already-inside QR shows Already inside and auto-
   assert.equal(again.guest.status, 'inside');
   assert.equal(again.guest.message, 'Already inside.');
   assert.equal(again.guest.resultCode, 'ready');
-  assert.equal(scheduled[0].ms, 1800);
+  assert.equal(scheduled.length, 0, 'Already inside stays on screen; no 1.8s auto-dismiss');
   assert.equal(posts.filter((p) => p.op === 'lookup').length, 2);
-  flush();
+  assert.equal(desk.snapshot().view, 'review');
+  desk.dismiss();
   assert.equal(desk.snapshot().view, 'scanning');
-  assert.equal(desk.snapshot().guest, null);
   assert.equal(resumes.length, 2);
 
   const third = await desk.onCode('TokSecretA12345');
@@ -311,19 +311,20 @@ await check('desk: same-token ignore no longer swallows a rescan once back on sc
   assert.equal(snap.guest.message, 'Already inside.');
   const blocked = await desk.onCode('TokSecretI12345');
   assert.equal(blocked.view, 'review', 'while review is up, a second decode is ignored');
-  flush();
+  desk.dismiss();
   const after = await desk.onCode('TokSecretI12345');
   assert.equal(after.view, 'review');
   assert.equal(after.guest.message, 'Already inside.');
 });
 
-await check('desk: choosing Check out cancels auto-resume so staff can confirm it', async () => {
+await check('desk: choosing Check out from an already-inside QR can still confirm it', async () => {
   const { service, secret, db } = makeService();
   const { desk, scheduled, flush } = makeDesk(service, []);
   await desk.signIn('gate', secret);
   const looked = await desk.onCode('TokSecretI12345');
   assert.equal(looked.guest.status, 'inside');
-  assert.equal(scheduled.length, 1);
+  assert.equal(looked.view, 'review');
+  assert.equal(scheduled.length, 0);
   desk.choose('check_out');
   const done = await desk.confirm();
   assert.equal(done.guest.resultCode, 'checked_out');

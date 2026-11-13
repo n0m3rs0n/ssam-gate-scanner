@@ -186,14 +186,15 @@
         opts.inside = guest.inside || opts.inside || 0;
         if (guest.resultCode === 'not_a_ticket' || guest.status === 'inside' || guest.status === 'left') {
           opts.feedback(guest.resultCode === 'not_a_ticket' ? 'not_a_ticket' : guest.status);
-          armAutoResume(1800);
         }
+        // Do not auto-resume here. A 1.8s dismiss made "Already inside" vanish
+        // while the camera came back, so a rescan looked like nothing happened.
+        // Staff tap Scan next when they are ready (same as f4e4c0c).
         emit();
         return snapshot();
       }).catch(function () {
         busy = false;
         guest = { ok: false, resultCode: 'rejected', message: 'The gate did not answer. Nothing was checked in.' };
-        armAutoResume(1800);
         emit();
         return snapshot();
       });

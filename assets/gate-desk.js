@@ -69,6 +69,7 @@
     var searchCode = '';
     var confirmHit = null;
     var confirmRequestId = '';
+    var resumeGen = 0;
 
     function snapshot() {
       return {
@@ -102,6 +103,30 @@
     function clearSearchConfirm() {
       confirmHit = null;
       confirmRequestId = '';
+    }
+
+    function cancelAutoResume() {
+      resumeGen += 1;
+    }
+
+    function backToScan() {
+      cancelAutoResume();
+      pendingToken = '';
+      guest = null;
+      mode = 'check_in';
+      view = 'scanning';
+      emit();
+      if (opts.resume) opts.resume();
+      return snapshot();
+    }
+
+    function armAutoResume(ms) {
+      resumeGen += 1;
+      var id = resumeGen;
+      opts.schedule(function () {
+        if (id !== resumeGen) return;
+        backToScan();
+      }, ms || 1800);
     }
 
     function setEndpoint(url) {
@@ -145,7 +170,7 @@
     function onCode(raw) {
       if (view === 'review' || view === 'result' || busy || confirmHit) return Promise.resolve(snapshot());
       var token = ticketToken(raw);
-      if (!token || token === pendingToken) return Promise.resolve(snapshot());
+      if (!token) return Promise.resolve(snapshot());
       pendingToken = token;
       view = 'review';
       mode = 'check_in';
@@ -161,12 +186,14 @@
         opts.inside = guest.inside || opts.inside || 0;
         if (guest.resultCode === 'not_a_ticket' || guest.status === 'inside' || guest.status === 'left') {
           opts.feedback(guest.resultCode === 'not_a_ticket' ? 'not_a_ticket' : guest.status);
+          armAutoResume(1800);
         }
         emit();
         return snapshot();
       }).catch(function () {
         busy = false;
         guest = { ok: false, resultCode: 'rejected', message: 'The gate did not answer. Nothing was checked in.' };
+        armAutoResume(1800);
         emit();
         return snapshot();
       });
@@ -174,6 +201,7 @@
 
     function choose(nextMode) {
       if (nextMode === 'check_in' || nextMode === 'check_out') {
+        cancelAutoResume();
         mode = nextMode;
         emit();
       }
@@ -182,6 +210,7 @@
 
     function confirm() {
       if (busy || view !== 'review' || !guest || guest.ok === false) return Promise.resolve(snapshot());
+      cancelAutoResume();
       busy = true;
       requestSeq += 1;
       var requestId = 'g' + requestSeq;
@@ -200,12 +229,7 @@
         opts.feedback(guest.resultCode || 'rejected');
         emit();
         opts.schedule(function () {
-          pendingToken = '';
-          guest = null;
-          mode = 'check_in';
-          view = 'scanning';
-          emit();
-          if (opts.resume) opts.resume();
+          backToScan();
         }, 900);
         return snapshot();
       }).catch(function () {
@@ -213,18 +237,13 @@
         guest = { ok: false, resultCode: 'rejected', message: 'The gate did not answer. Nothing was checked in.' };
         view = 'result';
         emit();
+        armAutoResume(1800);
         return snapshot();
       });
     }
 
     function dismiss() {
-      pendingToken = '';
-      guest = null;
-      mode = 'check_in';
-      view = 'scanning';
-      emit();
-      if (opts.resume) opts.resume();
-      return snapshot();
+      return backToScan();
     }
 
     function setQuery(value) {
@@ -344,6 +363,7 @@
     }
 
     function signOut() {
+      cancelAutoResume();
       var session = opts.storage.get('ssamGateSession');
       opts.storage.remove('ssamGateSession');
       pendingToken = '';

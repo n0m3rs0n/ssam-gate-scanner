@@ -100,10 +100,12 @@ function makeService() {
   return { service, db, secret };
 }
 
-function makeDesk(service, posts) {
+function makeDesk(service, posts, extras) {
   const store = memory();
   store.set('ssamGateEndpoint', 'https://script.google.com/macros/s/AKfycbzTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTEST/exec');
-  const desk = deskApi.createGateDesk({
+  const scheduled = [];
+  const resumes = [];
+  const desk = deskApi.createGateDesk(Object.assign({
     endpointOk: deskApi.endpointOk,
     storage: store,
     post: function (body) {
@@ -113,9 +115,10 @@ function makeDesk(service, posts) {
       return Promise.resolve(service[op](body));
     },
     feedback: function () {},
-    schedule: function () {}
-  });
-  return { desk, store, posts };
+    schedule: function (fn, ms) { scheduled.push({ fn, ms }); },
+    resume: function () { resumes.push(Date.now()); }
+  }, extras || {}));
+  return { desk, store, posts, scheduled, resumes, flush: function () { const list = scheduled.splice(0); list.forEach(function (item) { item.fn(); }); } };
 }
 
 await check('queryLongEnough: 3 letters or a ticket number, accents count', () => {
@@ -260,6 +263,74 @@ await check('desk: QR check-in path is unchanged and does not use act_by_ticket'
   assert.equal(done.guest.resultCode, 'checked_in');
   assert.deepEqual(posts.map((p) => p.op), ['lookup', 'act']);
   assert.equal(posts[1].ticket, 'TokSecretA12345');
+});
+
+await check('desk: rescan of an already-inside QR shows Already inside and auto-resumes', async () => {
+  const { service, secret } = makeService();
+  const posts = [];
+  const { desk, scheduled, resumes, flush } = makeDesk(service, posts);
+  await desk.signIn('gate', secret);
+  posts.length = 0;
+  const first = await desk.onCode('TokSecretA12345');
+  assert.equal(first.view, 'review');
+  assert.equal(first.guest.status, 'not_arrived');
+  assert.equal(scheduled.length, 0, 'fresh tickets wait for Confirm; no auto-resume');
+  const checked = await desk.confirm();
+  assert.equal(checked.guest.resultCode, 'checked_in');
+  assert.equal(checked.view, 'result');
+  assert.equal(scheduled[0].ms, 900);
+  flush();
+  assert.equal(desk.snapshot().view, 'scanning');
+  assert.equal(desk.snapshot().pending, '');
+  assert.equal(resumes.length, 1);
+
+  const again = await desk.onCode('TokSecretA12345');
+  assert.equal(again.view, 'review');
+  assert.equal(again.guest.status, 'inside');
+  assert.equal(again.guest.message, 'Already inside.');
+  assert.equal(again.guest.resultCode, 'ready');
+  assert.equal(scheduled[0].ms, 1800);
+  assert.equal(posts.filter((p) => p.op === 'lookup').length, 2);
+  flush();
+  assert.equal(desk.snapshot().view, 'scanning');
+  assert.equal(desk.snapshot().guest, null);
+  assert.equal(resumes.length, 2);
+
+  const third = await desk.onCode('TokSecretA12345');
+  assert.equal(third.guest.message, 'Already inside.');
+  assert.equal(third.view, 'review');
+});
+
+await check('desk: same-token ignore no longer swallows a rescan once back on scanning', async () => {
+  const { service, secret } = makeService();
+  const { desk, flush } = makeDesk(service, []);
+  await desk.signIn('gate', secret);
+  await desk.onCode('TokSecretI12345');
+  const snap = desk.snapshot();
+  assert.equal(snap.guest.status, 'inside');
+  assert.equal(snap.guest.message, 'Already inside.');
+  const blocked = await desk.onCode('TokSecretI12345');
+  assert.equal(blocked.view, 'review', 'while review is up, a second decode is ignored');
+  flush();
+  const after = await desk.onCode('TokSecretI12345');
+  assert.equal(after.view, 'review');
+  assert.equal(after.guest.message, 'Already inside.');
+});
+
+await check('desk: choosing Check out cancels auto-resume so staff can confirm it', async () => {
+  const { service, secret, db } = makeService();
+  const { desk, scheduled, flush } = makeDesk(service, []);
+  await desk.signIn('gate', secret);
+  const looked = await desk.onCode('TokSecretI12345');
+  assert.equal(looked.guest.status, 'inside');
+  assert.equal(scheduled.length, 1);
+  desk.choose('check_out');
+  const done = await desk.confirm();
+  assert.equal(done.guest.resultCode, 'checked_out');
+  assert.equal(db.attendance.length, 1);
+  assert.equal(db.attendance[0].action, 'check_out');
+  flush();
+  assert.equal(desk.snapshot().view, 'scanning');
 });
 
 await check('desk: unpaid and demo tickets cannot be acted on by ticket id', async () => {

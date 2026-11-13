@@ -29,6 +29,7 @@
 
   function createCamera(opts) {
     var state = 'idle', facing = 'environment', token = '', error = '', errorName = '', stream = null, gen = 0, listeners = [];
+    var lastToken = '', lastAt = 0, cooldownMs = 1200;
 
     function snapshot() {
       return { state: state, facing: facing, token: token, error: error, errorName: errorName };
@@ -53,12 +54,18 @@
         Promise.resolve().then(function () { return opts.decodeFrame(opts.video); }).then(function (raw) {
           if (id !== gen || state !== 'scanning') return;
           if (raw) {
-            token = api.ticketToken(raw);
+            var next = api.ticketToken(raw);
+            var now = Date.now();
+            if (next && next === lastToken && (now - lastAt) < cooldownMs) {
+              loop(id);
+              return;
+            }
+            lastToken = next;
+            lastAt = now;
+            token = next;
             state = 'holding';
             error = '';
             errorName = '';
-            gen += 1;
-            clearStream();
             emit();
             return;
           }
@@ -126,7 +133,19 @@
       start: start,
       stop: stop,
       switchCamera: function () { return start({ facingMode: facing === 'environment' ? 'user' : 'environment' }); },
-      scanAgain: function () { return start({ facingMode: facing }); },
+      scanAgain: function () {
+        lastAt = Date.now();
+        if (stream && state === 'holding') {
+          token = '';
+          error = '';
+          errorName = '';
+          state = 'scanning';
+          emit();
+          loop(gen);
+          return Promise.resolve(snapshot());
+        }
+        return start({ facingMode: facing });
+      },
       subscribe: function (fn) {
         listeners.push(fn);
         return function () { listeners = listeners.filter(function (item) { return item !== fn; }); };
@@ -272,10 +291,11 @@
     document.getElementById('out').setAttribute('aria-pressed', state.mode === 'check_out' ? 'true' : 'false');
     var canConfirm = state.view === 'review' && guest && guest.ok !== false && guest.resultCode !== 'not_a_ticket';
     document.getElementById('confirm').hidden = !canConfirm;
+    var cam = camera.snapshot();
     if (state.view === 'scanning') {
-      statusEl.textContent = camera.snapshot().error || (camera.snapshot().state === 'scanning' ? 'Rear camera is on. Hold the QR in the frame.' : 'The camera is off.');
+      statusEl.textContent = cam.error || (cam.state === 'scanning' || cam.state === 'holding' || cam.state === 'starting' ? 'Rear camera is on. Hold the QR in the frame.' : 'The camera is off.');
     }
-    videoEl.hidden = state.view !== 'scanning' || camera.snapshot().state === 'idle';
+    videoEl.hidden = !(cam.state === 'scanning' || cam.state === 'holding' || cam.state === 'starting');
 
     var queryEl = document.getElementById('query');
     if (queryEl && queryEl.value !== state.query && document.activeElement !== queryEl) queryEl.value = state.query || '';

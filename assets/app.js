@@ -3,6 +3,10 @@
   var api = window.ssamGate;
   var DEFAULT_ENDPOINT = 'https://script.google.com/macros/s/AKfycbzfapi6GC4acvDDgFDoaONEktH771Rl4oVrHcnRjyGIl09mBb-CpUnXIOuif5mkdpS1/exec';
 
+  function videoIsHidden(view, camState) {
+    return view !== 'scanning' || camState === 'idle' || camState === 'error';
+  }
+
   function scaleFrame(width, height, maxSide) {
     var w = Number(width) || 0, h = Number(height) || 0;
     if (w < 1 || h < 1) return { width: 0, height: 0 };
@@ -141,8 +145,10 @@
           errorName = '';
           state = 'scanning';
           emit();
-          loop(gen);
-          return Promise.resolve(snapshot());
+          return Promise.resolve(opts.video && opts.video.play ? opts.video.play() : undefined).catch(function () {}).then(function () {
+            if (state === 'scanning') loop(gen);
+            return snapshot();
+          });
         }
         return start({ facingMode: facing });
       },
@@ -295,7 +301,9 @@
     if (state.view === 'scanning') {
       statusEl.textContent = cam.error || (cam.state === 'scanning' || cam.state === 'holding' || cam.state === 'starting' ? 'Rear camera is on. Hold the QR in the frame.' : 'The camera is off.');
     }
-    videoEl.hidden = !(cam.state === 'scanning' || cam.state === 'holding' || cam.state === 'starting');
+    // Hide the preview during review/result so the result card is on screen.
+    // Keeping the stream (not hidden=false on a 3:4 video) was covering the card on phones.
+    videoEl.hidden = videoIsHidden(state.view, cam.state);
 
     var queryEl = document.getElementById('query');
     if (queryEl && queryEl.value !== state.query && document.activeElement !== queryEl) queryEl.value = state.query || '';
@@ -351,5 +359,5 @@
   document.getElementById('find-confirm-btn').addEventListener('click', function () { desk.confirmAct(); });
   document.getElementById('find-cancel').addEventListener('click', function () { desk.cancelAct(); });
 
-  window.ssamGateApp = { desk: desk, camera: camera, confirmText: confirmText, paintHits: paintHits };
+  window.ssamGateApp = { desk: desk, camera: camera, confirmText: confirmText, paintHits: paintHits, videoIsHidden: videoIsHidden, createCamera: createCamera };
 })();
